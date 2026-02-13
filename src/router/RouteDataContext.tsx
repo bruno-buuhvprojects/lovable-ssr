@@ -41,12 +41,12 @@ export function RouteDataProvider({
   initialParams = {},
 }: RouteDataProviderProps) {
   const initialKey =
-    initialRoute && Object.keys(initialData ?? {}).length > 0
+    initialRoute && initialData !== undefined
       ? buildRouteKey(initialRoute.path, initialParams)
       : null;
 
   const [data, setDataState] = useState<RouteDataState>(() =>
-    initialKey && initialData ? { [initialKey]: initialData } : {}
+    initialKey !== null && initialData !== undefined ? { [initialKey]: initialData } : {}
   );
 
   const setData = useCallback((routeKey: string, value: Record<string, unknown>) => {

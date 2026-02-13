@@ -8,10 +8,10 @@ export function buildRouteKey(path, params) {
 }
 const RouteDataContext = createContext(null);
 export function RouteDataProvider({ children, initialData, initialRoute, initialParams = {}, }) {
-    const initialKey = initialRoute && Object.keys(initialData ?? {}).length > 0
+    const initialKey = initialRoute && initialData !== undefined
         ? buildRouteKey(initialRoute.path, initialParams)
         : null;
-    const [data, setDataState] = useState(() => initialKey && initialData ? { [initialKey]: initialData } : {});
+    const [data, setDataState] = useState(() => initialKey !== null && initialData !== undefined ? { [initialKey]: initialData } : {});
     const setData = useCallback((routeKey, value) => {
         setDataState((prev) => ({ ...prev, [routeKey]: value }));
     }, []);
