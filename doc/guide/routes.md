@@ -40,6 +40,7 @@ registerRoutes(routes);
 You must call `registerRoutes(routes)` before any use of the router or `AppRoutes`:
 
 - **Client**: import your routes module in `App.tsx` (or `main.tsx`) so it runs on load.
-- **SSR**: import the routes module in your entry-server and call `registerRoutes(routes)` before calling the framework’s `render`.
+- **SSR entry**: the entry-server typically imports the routes module and calls `registerRoutes(routes)` before calling the framework’s `render`.
+- **SSR server**: **import the routes module in your `server.ts` before `createServer()`** (e.g. `import '../application/routes'`). The server calls `RouterService.isSsrRoute(pathname)` on each request; that reads from the registry. If the registry is still empty (because the entry is only loaded when doing SSR), every request is treated as SPA and the entry never runs. Importing the routes in `server.ts` ensures the registry is filled at startup.
 
 The framework uses this registry for `RouterService.matchRoute`, `RouterService.isSsrRoute`, and for `AppRoutes` to render the list of routes.

@@ -6,15 +6,12 @@ Create a module that registers routes and exports a `render(url)` that uses the 
 
 ```tsx
 // src/ssr/entry-server.tsx (or src/entry-server.tsx)
-import { registerRoutes, render as frameworkRender } from 'lovable-ssr';
-import { routes } from '@/routes';
+import { render as frameworkRender } from 'lovable-ssr';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/toaster';
 
 const queryClient = new QueryClient();
-
-registerRoutes(routes);
 
 export interface RenderResult {
   html: string;
@@ -39,13 +36,18 @@ The framework’s `render(url, options)` resolves the route, runs `getServerData
 
 ## 2. Server script
 
-Run the Express + Vite server using `createServer` from the **server** subpath (so Node-only code is not bundled in the client):
+Run the Express + Vite server using `createServer` from the **server** subpath (so Node-only code is not bundled in the client). **Import your routes module before `createServer()`** so the route registry is populated when the server starts; the server calls `RouterService.isSsrRoute(pathname)` on each request, and that reads from the registry — if it’s empty (because the entry is only loaded later), every route is treated as SPA.
 
 ```ts
 // src/ssr/server.ts
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'lovable-ssr/server';
+import { registerRoutes } from 'lovable-ssr';
+
+import { routes } from '@/routes';//adjust for your path
+// Ensures the route registry is populated before the first request (isSsrRoute, etc.)
+registerRoutes(routes);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '../..');
