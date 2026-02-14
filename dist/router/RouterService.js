@@ -25,18 +25,26 @@ function matchRoute(pathname) {
 function routeParams(routePath, pathname) {
     const pathSegments = pathname?.split('/').filter(Boolean) || [];
     const patternSegments = routePath.split('/').filter(Boolean);
-    const params = {};
+    const params = {
+        routeParams: {},
+        searchParams: {},
+    };
     patternSegments.forEach((segment, i) => {
         if (segment.startsWith(':')) {
-            params[segment.slice(1)] = pathSegments[i];
+            params['routeParams'][segment.slice(1)] = pathSegments[i];
         }
     });
     return params;
+}
+function searchParams(pathname) {
+    const searchParams = new URLSearchParams(pathname);
+    return Object.fromEntries(searchParams.entries());
 }
 const RouterService = {
     isSsrRoute,
     matchPath,
     matchRoute,
     routeParams,
+    searchParams,
 };
 export default RouterService;

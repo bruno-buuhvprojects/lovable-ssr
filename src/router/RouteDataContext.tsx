@@ -31,18 +31,21 @@ interface RouteDataProviderProps {
   children: ReactNode;
   initialData?: Record<string, unknown>;
   initialRoute?: InitialRouteShape;
-  initialParams?: Record<string, string>;
+  initialParams?: Record<'routeParams' | 'searchParams', Record<string, string>>;
 }
 
 export function RouteDataProvider({
   children,
   initialData,
   initialRoute,
-  initialParams = {},
+  initialParams = {
+    routeParams: {},
+    searchParams: {},
+  },
 }: RouteDataProviderProps) {
   const initialKey =
     initialRoute && Object.keys(initialData ?? {}).length > 0
-      ? buildRouteKey(initialRoute.path, initialParams)
+      ? buildRouteKey(initialRoute.path, initialParams.routeParams)
       : null;
 
   const [data, setDataState] = useState<RouteDataState>(() =>

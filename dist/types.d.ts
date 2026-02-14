@@ -1,6 +1,6 @@
 import type React from 'react';
 export type ComponentWithGetServerData = React.ComponentType<any> & {
-    getServerData?: (params?: Record<string, string>) => Promise<Record<string, unknown>>;
+    getServerData?: (params?: Record<'routeParams' | 'searchParams', Record<string, string>>) => Promise<Record<string, unknown>>;
 };
 export type RouteConfig = {
     path: string;

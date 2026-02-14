@@ -12,7 +12,7 @@ interface RouteDataProviderProps {
     children: ReactNode;
     initialData?: Record<string, unknown>;
     initialRoute?: InitialRouteShape;
-    initialParams?: Record<string, string>;
+    initialParams?: Record<'routeParams' | 'searchParams', Record<string, string>>;
 }
 export declare function RouteDataProvider({ children, initialData, initialRoute, initialParams, }: RouteDataProviderProps): import("react/jsx-runtime").JSX.Element;
 export declare function useRouteData(): RouteDataContextValue;

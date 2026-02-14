@@ -9,11 +9,15 @@ export function AppRoutes() {
     const pathname = location.pathname || '/';
     const routes = getRoutes();
     const matchedRoute = RouterService.matchRoute(pathname);
-    const params = matchedRoute ? RouterService.routeParams(matchedRoute.path, pathname) : {};
-    const routeKey = matchedRoute ? buildRouteKey(matchedRoute.path, params) : '';
+    const params = matchedRoute ? RouterService.routeParams(matchedRoute.path, pathname) : {
+        routeParams: {},
+        searchParams: {},
+    };
+    const routeKey = matchedRoute ? buildRouteKey(matchedRoute.path, params.routeParams) : '';
     const { data, setData } = useRouteData();
     const currentData = routeKey ? data[routeKey] : undefined;
     const getServerData = matchedRoute?.Component?.getServerData;
+    params.searchParams = RouterService.searchParams(pathname);
     useEffect(() => {
         if (!routeKey || !getServerData || currentData !== undefined)
             return;

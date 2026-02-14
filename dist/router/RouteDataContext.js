@@ -7,9 +7,12 @@ export function buildRouteKey(path, params) {
     return `${path}|${JSON.stringify(sorted)}`;
 }
 const RouteDataContext = createContext(null);
-export function RouteDataProvider({ children, initialData, initialRoute, initialParams = {}, }) {
+export function RouteDataProvider({ children, initialData, initialRoute, initialParams = {
+    routeParams: {},
+    searchParams: {},
+}, }) {
     const initialKey = initialRoute && Object.keys(initialData ?? {}).length > 0
-        ? buildRouteKey(initialRoute.path, initialParams)
+        ? buildRouteKey(initialRoute.path, initialParams.routeParams)
         : null;
     const [data, setDataState] = useState(() => initialKey && initialData ? { [initialKey]: initialData } : {});
     const setData = useCallback((routeKey, value) => {

@@ -8,7 +8,12 @@ export async function render(url, options) {
     const fullUrl = new URL(url, 'http://localhost');
     const pathname = fullUrl.pathname || '/';
     const matchedRoute = RouterService.matchRoute(pathname);
-    const params = matchedRoute ? RouterService.routeParams(matchedRoute.path, pathname) : {};
+    const params = matchedRoute ? RouterService.routeParams(matchedRoute.path, pathname) : {
+        routeParams: {},
+        searchParams: {},
+    };
+    const searchParams = matchedRoute ? RouterService.searchParams(pathname) : {};
+    params.searchParams = searchParams;
     let preloadedData = { is_success: true };
     const getServerData = matchedRoute?.Component?.getServerData;
     if (typeof getServerData === 'function') {

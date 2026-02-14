@@ -15,6 +15,9 @@ export function BrowserRouteDataProvider({ children }) {
     const matchedRoute = RouterService.matchRoute(pathname);
     const routeParams = matchedRoute
         ? RouterService.routeParams(matchedRoute.path, pathname)
-        : {};
+        : {
+            routeParams: {},
+            searchParams: {},
+        };
     return (_jsx(RouteDataProvider, { initialData: preloadedData, initialRoute: matchedRoute, initialParams: routeParams, children: children }));
 }

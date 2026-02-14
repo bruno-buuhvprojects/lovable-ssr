@@ -18,7 +18,10 @@ export function BrowserRouteDataProvider({ children }: { children: ReactNode }) 
   const matchedRoute = RouterService.matchRoute(pathname);
   const routeParams = matchedRoute
     ? RouterService.routeParams(matchedRoute.path, pathname)
-    : {};
+    : {
+      routeParams: {},
+      searchParams: {},
+    };
 
   return (
     <RouteDataProvider

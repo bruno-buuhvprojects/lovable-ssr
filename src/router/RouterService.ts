@@ -23,16 +23,23 @@ function matchRoute(pathname: string): RouteConfig | undefined {
   return routes.find((r) => r.path === '*');
 }
 
-function routeParams(routePath: string, pathname?: string): Record<string, string> {
+function routeParams(routePath: string, pathname?: string): Record<'routeParams' | 'searchParams', Record<string, string>> {
   const pathSegments = pathname?.split('/').filter(Boolean) || [];
   const patternSegments = routePath.split('/').filter(Boolean);
-  const params: Record<string, string> = {};
+  const params: Record<'routeParams' | 'searchParams', Record<string, string>> = {
+    routeParams: {},
+    searchParams: {},
+  };
   patternSegments.forEach((segment, i) => {
     if (segment.startsWith(':')) {
-      params[segment.slice(1)] = pathSegments[i];
+      params['routeParams'][segment.slice(1)] = pathSegments[i];
     }
   });
   return params;
+}
+function searchParams(pathname: string): Record<string, string> {
+  const searchParams = new URLSearchParams(pathname);
+  return Object.fromEntries(searchParams.entries());
 }
 
 const RouterService = {
@@ -40,6 +47,7 @@ const RouterService = {
   matchPath,
   matchRoute,
   routeParams,
+  searchParams,
 };
 
 export default RouterService;
