@@ -36,9 +36,10 @@ function routeParams(routePath, pathname) {
     });
     return params;
 }
-function searchParams(pathname) {
-    const searchParams = new URLSearchParams(pathname);
-    return Object.fromEntries(searchParams.entries());
+/** Parses the URL query string (e.g. "?filter=FPS" or "filter=FPS") into key/value pairs. */
+function searchParams(queryString) {
+    const parsed = new URLSearchParams(queryString);
+    return Object.fromEntries(parsed.entries());
 }
 const RouterService = {
     isSsrRoute,

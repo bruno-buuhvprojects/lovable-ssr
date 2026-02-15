@@ -18,7 +18,7 @@ export function AppRoutes() {
   const currentData = routeKey ? data[routeKey] : undefined;
   const getServerData = matchedRoute?.Component?.getServerData;
 
-  params.searchParams = RouterService.searchParams(pathname);
+  params.searchParams = RouterService.searchParams(location.search ?? '');
 
   useEffect(() => {
     if (!routeKey || !getServerData || currentData !== undefined) return;

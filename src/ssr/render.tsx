@@ -22,7 +22,7 @@ export async function render(url: string, options?: RenderOptions): Promise<Rend
     routeParams: {},
     searchParams: {},
   };
-  const searchParams = matchedRoute ? RouterService.searchParams(pathname) : {};
+  const searchParams = matchedRoute ? RouterService.searchParams(fullUrl.search) : {};
   params.searchParams = searchParams;
 
   let preloadedData: Record<string, unknown> = { is_success: true };

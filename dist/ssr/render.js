@@ -12,7 +12,7 @@ export async function render(url, options) {
         routeParams: {},
         searchParams: {},
     };
-    const searchParams = matchedRoute ? RouterService.searchParams(pathname) : {};
+    const searchParams = matchedRoute ? RouterService.searchParams(fullUrl.search) : {};
     params.searchParams = searchParams;
     let preloadedData = { is_success: true };
     const getServerData = matchedRoute?.Component?.getServerData;

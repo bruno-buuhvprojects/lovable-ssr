@@ -37,9 +37,10 @@ function routeParams(routePath: string, pathname?: string): Record<'routeParams'
   });
   return params;
 }
-function searchParams(pathname: string): Record<string, string> {
-  const searchParams = new URLSearchParams(pathname);
-  return Object.fromEntries(searchParams.entries());
+/** Parses the URL query string (e.g. "?filter=FPS" or "filter=FPS") into key/value pairs. */
+function searchParams(queryString: string): Record<string, string> {
+  const parsed = new URLSearchParams(queryString);
+  return Object.fromEntries(parsed.entries());
 }
 
 const RouterService = {
