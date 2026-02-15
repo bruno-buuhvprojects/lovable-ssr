@@ -2,6 +2,16 @@
   "name": "lovable-ssr",
   "version": "0.1.10",
   "description": "SSR and route data engine for Lovable projects",
+  "keywords": [
+    "ssr",
+    "react",
+    "vite",
+    "express",
+    "lovable",
+    "getServerData",
+    "route-registry",
+    "server-side-rendering"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
