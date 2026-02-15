@@ -1,6 +1,10 @@
 import { type ReactNode } from 'react';
 export type RouteDataState = Record<string, Record<string, unknown>>;
-export declare function buildRouteKey(path: string, params: Record<string, string>): string;
+/**
+ * Builds a stable cache key for route data. Includes path, route params and optionally search params
+ * so that the same path with different query strings (e.g. ?filter=FPS vs ?filter=RPG) gets different keys.
+ */
+export declare function buildRouteKey(path: string, routeParams: Record<string, string>, searchParams?: Record<string, string>): string;
 interface RouteDataContextValue {
     data: RouteDataState;
     setData: (routeKey: string, value: Record<string, unknown>) => void;

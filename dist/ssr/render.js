@@ -4,6 +4,10 @@ import { StaticRouter } from 'react-router-dom/server';
 import RouterService from '../router/RouterService.js';
 import { RouteDataProvider } from '../router/RouteDataContext.js';
 import { AppRoutes } from '../components/AppRoutes.js';
+/**
+ * Renders the app for a single URL. Called once per request with that request's URL.
+ * getServerData is invoked only for the route that matches this URL (never for all routes).
+ */
 export async function render(url, options) {
     const fullUrl = new URL(url, 'http://localhost');
     const pathname = fullUrl.pathname || '/';

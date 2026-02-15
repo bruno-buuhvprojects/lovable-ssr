@@ -9,11 +9,26 @@ import React, {
 
 export type RouteDataState = Record<string, Record<string, unknown>>;
 
-export function buildRouteKey(path: string, params: Record<string, string>): string {
-  const sorted = Object.keys(params)
+/**
+ * Builds a stable cache key for route data. Includes path, route params and optionally search params
+ * so that the same path with different query strings (e.g. ?filter=FPS vs ?filter=RPG) gets different keys.
+ */
+export function buildRouteKey(
+  path: string,
+  routeParams: Record<string, string>,
+  searchParams?: Record<string, string>
+): string {
+  const sortedRoute = Object.keys(routeParams)
     .sort()
-    .reduce((acc, k) => ({ ...acc, [k]: params[k] }), {} as Record<string, string>);
-  return `${path}|${JSON.stringify(sorted)}`;
+    .reduce((acc, k) => ({ ...acc, [k]: routeParams[k] }), {} as Record<string, string>);
+  let key = `${path}|${JSON.stringify(sortedRoute)}`;
+  if (searchParams && Object.keys(searchParams).length > 0) {
+    const sortedSearch = Object.keys(searchParams)
+      .sort()
+      .reduce((acc, k) => ({ ...acc, [k]: searchParams[k] }), {} as Record<string, string>);
+    key += `|${JSON.stringify(sortedSearch)}`;
+  }
+  return key;
 }
 
 interface RouteDataContextValue {
@@ -45,7 +60,7 @@ export function RouteDataProvider({
 }: RouteDataProviderProps) {
   const initialKey =
     initialRoute && Object.keys(initialData ?? {}).length > 0
-      ? buildRouteKey(initialRoute.path, initialParams.routeParams)
+      ? buildRouteKey(initialRoute.path, initialParams.routeParams, initialParams.searchParams)
       : null;
 
   const [data, setDataState] = useState<RouteDataState>(() =>

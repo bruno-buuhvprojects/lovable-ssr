@@ -13,11 +13,11 @@ export function AppRoutes() {
         routeParams: {},
         searchParams: {},
     };
-    const routeKey = matchedRoute ? buildRouteKey(matchedRoute.path, params.routeParams) : '';
+    params.searchParams = RouterService.searchParams(location.search ?? '');
+    const routeKey = matchedRoute ? buildRouteKey(matchedRoute.path, params.routeParams, params.searchParams) : '';
     const { data, setData } = useRouteData();
     const currentData = routeKey ? data[routeKey] : undefined;
     const getServerData = matchedRoute?.Component?.getServerData;
-    params.searchParams = RouterService.searchParams(location.search ?? '');
     useEffect(() => {
         if (!routeKey || !getServerData || currentData !== undefined)
             return;

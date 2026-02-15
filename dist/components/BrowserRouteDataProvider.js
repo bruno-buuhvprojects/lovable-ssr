@@ -12,12 +12,14 @@ import { RouteDataProvider } from '../router/RouteDataContext.js';
 export function BrowserRouteDataProvider({ children }) {
     const preloadedData = typeof window !== 'undefined' ? (window.__PRELOADED_DATA__ ?? {}) : {};
     const pathname = typeof window !== 'undefined' ? window.location.pathname || '/' : '/';
+    const searchParams = typeof window !== 'undefined' ? RouterService.searchParams(window.location.search ?? '') : {};
     const matchedRoute = RouterService.matchRoute(pathname);
-    const routeParams = matchedRoute
+    const routeParamsResult = matchedRoute
         ? RouterService.routeParams(matchedRoute.path, pathname)
-        : {
-            routeParams: {},
-            searchParams: {},
-        };
-    return (_jsx(RouteDataProvider, { initialData: preloadedData, initialRoute: matchedRoute, initialParams: routeParams, children: children }));
+        : { routeParams: {}, searchParams: {} };
+    const initialParams = {
+        routeParams: routeParamsResult.routeParams,
+        searchParams: Object.keys(searchParams).length > 0 ? searchParams : routeParamsResult.searchParams,
+    };
+    return (_jsx(RouteDataProvider, { initialData: preloadedData, initialRoute: matchedRoute, initialParams: initialParams, children: children }));
 }

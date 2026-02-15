@@ -15,6 +15,15 @@ class SsrServer {
     config;
     isProd;
     _rendererCache;
+    /** On-demand SSR cache: key = pathname + normalized search params, value = render result. Only used in production. */
+    _ssrCache = new Map();
+    normalizeCacheKey(url) {
+        const u = new URL(url, 'http://localhost');
+        const search = new URLSearchParams(u.search);
+        const sorted = new URLSearchParams([...search.entries()].sort((a, b) => a[0].localeCompare(b[0])));
+        const q = sorted.toString();
+        return (u.pathname || '/') + (q ? `?${q}` : '');
+    }
     constructor(config) {
         this.config = {
             root: path.resolve(config.root),
@@ -86,9 +95,30 @@ class SsrServer {
     }
     async renderSsr(url, res) {
         const { template, render } = await this.getSsrRenderer();
-        const result = await render(url);
-        const appHtml = typeof result.html === 'string' ? result.html : '';
-        const preloadedData = result.preloadedData ?? {};
+        if (process.env.NODE_ENV !== 'production' && process.env.LOVABLE_SSR_DEBUG) {
+            console.log('[lovable-ssr] render(url)', url);
+        }
+        let appHtml;
+        let preloadedData;
+        if (this.isProd) {
+            const cacheKey = this.normalizeCacheKey(url);
+            const cached = this._ssrCache.get(cacheKey);
+            if (cached) {
+                appHtml = cached.html;
+                preloadedData = cached.preloadedData;
+            }
+            else {
+                const result = await render(url);
+                appHtml = typeof result.html === 'string' ? result.html : '';
+                preloadedData = result.preloadedData ?? {};
+                this._ssrCache.set(cacheKey, { html: appHtml, preloadedData });
+            }
+        }
+        else {
+            const result = await render(url);
+            appHtml = typeof result.html === 'string' ? result.html : '';
+            preloadedData = result.preloadedData ?? {};
+        }
         let html = template.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`);
         html = this.injectPreloadedData(html, preloadedData);
         if (this.vite) {

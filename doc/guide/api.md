@@ -32,7 +32,7 @@
 |--------|-------------|
 | `RouteDataProvider` | Provider with `initialData`, `initialRoute`, `initialParams`. |
 | `useRouteData()` | Returns `{ data: RouteDataState; setData(routeKey, value) }`. |
-| `buildRouteKey(path, params)` | Builds a stable key for path + params. |
+| `buildRouteKey(path, routeParams, searchParams?)` | Builds a stable key for path + route params + optional search params (so the same path with different query strings gets different keys). |
 
 ## UI components
 
