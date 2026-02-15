@@ -1,6 +1,6 @@
 {
   "name": "lovable-ssr",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "SSR and route data engine for Lovable projects",
   "type": "module",
   "main": "./dist/index.js",
