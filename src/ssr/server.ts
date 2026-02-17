@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
 import RouterService from '../router/RouterService.js';
+import { RequestContext } from '../types.js';
 
 export interface RenderResult {
   html: string;
@@ -101,7 +102,7 @@ class SsrServer {
       if (!RouterService.isSsrRoute(pathname)) {
         return await this.renderSpa(url, res);
       }
-      return await this.renderSsr(url, res);
+      return await this.renderSsr(url, res, req);
     } catch (e) {
       if (this.vite) {
         (this.vite as any).ssrFixStacktrace?.(e as Error);
@@ -121,7 +122,7 @@ class SsrServer {
     return res.status(200).set({ 'Content-Type': 'text/html' }).send(template);
   }
 
-  private async renderSsr(url: string, res: Response) {
+  private async renderSsr(url: string, res: Response, req: Request) {
     const { template, render } = await this.getSsrRenderer();
     if (process.env.NODE_ENV !== 'production' && process.env.LOVABLE_SSR_DEBUG) {
       console.log('[lovable-ssr] render(url)', url);
@@ -130,20 +131,50 @@ class SsrServer {
     let appHtml: string;
     let preloadedData: Record<string, unknown>;
 
+    // Constrói um contexto simples de request (cookies raw + headers) para o getData.
+    const cookiesRaw = req.headers.cookie ?? '';
+    const cookies: Record<string, string> = {};
+    if (cookiesRaw) {
+      cookiesRaw.split(';').forEach((part) => {
+        const [k, ...rest] = part.split('=');
+        if (!k) return;
+        const key = k.trim();
+        if (!key) return;
+        const value = rest.join('=').trim();
+        cookies[key] = decodeURIComponent(value);
+      });
+    }
+    const requestContext: RequestContext = {
+      cookiesRaw,
+      cookies,
+      headers: req.headers,
+      method: req.method,
+      url: req.originalUrl,
+    };
+
     if (this.isProd) {
       const cacheKey = this.normalizeCacheKey(url);
-      const cached = this._ssrCache.get(cacheKey);
-      if (cached) {
-        appHtml = cached.html;
-        preloadedData = cached.preloadedData;
+      const hasCookies = !!cookiesRaw;
+
+      // Evita cachear respostas personalizadas por cookies (ex.: auth).
+      if (!hasCookies) {
+        const cached = this._ssrCache.get(cacheKey);
+        if (cached) {
+          appHtml = cached.html;
+          preloadedData = cached.preloadedData;
+        } else {
+          const result = await render(url, { requestContext });
+          appHtml = typeof result.html === 'string' ? result.html : '';
+          preloadedData = result.preloadedData ?? {};
+          this._ssrCache.set(cacheKey, { html: appHtml, preloadedData });
+        }
       } else {
-        const result = await render(url);
+        const result = await render(url, { requestContext });
         appHtml = typeof result.html === 'string' ? result.html : '';
         preloadedData = result.preloadedData ?? {};
-        this._ssrCache.set(cacheKey, { html: appHtml, preloadedData });
       }
     } else {
-      const result = await render(url);
+      const result = await render(url, { requestContext });
       appHtml = typeof result.html === 'string' ? result.html : '';
       preloadedData = result.preloadedData ?? {};
     }
@@ -162,7 +193,7 @@ class SsrServer {
 
   private async getSsrRenderer(): Promise<{
     template: string;
-    render: (url: string) => Promise<RenderResult>;
+    render: (url: string, options?: { requestContext?: unknown }) => Promise<RenderResult>;
   }> {
     if (this._rendererCache) return this._rendererCache;
     if (this.vite) {
@@ -174,7 +205,10 @@ class SsrServer {
       );
       return {
         template,
-        render: entry.render as (url: string) => Promise<RenderResult>,
+        render: entry.render as (
+          url: string,
+          options?: { requestContext?: unknown }
+        ) => Promise<RenderResult>,
       };
     }
     const template = this.readTemplate(
@@ -187,7 +221,10 @@ class SsrServer {
     const entry = await import(entryUrl);
     return {
       template,
-      render: entry.render as (url: string) => Promise<RenderResult>,
+      render: entry.render as (
+        url: string,
+        options?: { requestContext?: unknown }
+      ) => Promise<RenderResult>,
     };
   }
 

@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
-import type { ReactNode } from 'react';
-import RouterService from '../router/RouterService.js';
-import { RouteDataProvider } from '../router/RouteDataContext.js';
 import { AppRoutes } from '../components/AppRoutes.js';
+import { RouteDataProvider } from '../router/RouteDataContext.js';
+import RouterService from '../router/RouterService.js';
+import { RequestContext } from '../types.js';
 
 export interface RenderResult {
   html: string;
@@ -12,6 +13,11 @@ export interface RenderResult {
 
 export interface RenderOptions {
   wrap?: (children: ReactNode) => ReactNode;
+  /**
+   * Contexto opcional da request (ex.: cookies, headers).
+   * O servidor pode preencher isso e o getData recebe via params.request.
+   */
+  requestContext?: RequestContext;
 }
 
 /**
@@ -22,12 +28,19 @@ export async function render(url: string, options?: RenderOptions): Promise<Rend
   const fullUrl = new URL(url, 'http://localhost');
   const pathname = fullUrl.pathname || '/';
   const matchedRoute = RouterService.matchRoute(pathname);
-  const params = matchedRoute ? RouterService.routeParams(matchedRoute.path, pathname) : {
-    routeParams: {},
-    searchParams: {},
-  };
+  const params: {
+    routeParams: Record<string, string>;
+    searchParams: Record<string, string>;
+    request?: RequestContext;
+  } = matchedRoute
+    ? RouterService.routeParams(matchedRoute.path, pathname)
+    : {
+        routeParams: {},
+        searchParams: {},
+      };
   const searchParams = matchedRoute ? RouterService.searchParams(fullUrl.search) : {};
   params.searchParams = searchParams;
+  params.request = options?.requestContext;
 
   let preloadedData: Record<string, unknown> = { is_success: true };
   const getData = matchedRoute?.Component?.getData;

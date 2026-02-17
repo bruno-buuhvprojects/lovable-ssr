@@ -20,7 +20,7 @@ export interface RenderResult {
   preloadedData: Record<string, unknown>;
 }
 
-export async function render(url: string): Promise<RenderResult> {
+export async function render(url: string, options?: { requestContext?: unknown }): Promise<RenderResult> {
   return frameworkRender(url, {
     wrap: (children) => (
       <QueryClientProvider client={queryClient}>
@@ -30,6 +30,8 @@ export async function render(url: string): Promise<RenderResult> {
         </TooltipProvider>
       </QueryClientProvider>
     ),
+    // requestContext is forwarded to getData via params.request
+    requestContext: options?.requestContext,
   });
 }
 ```

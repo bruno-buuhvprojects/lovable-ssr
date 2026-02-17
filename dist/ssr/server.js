@@ -74,7 +74,7 @@ class SsrServer {
             if (!RouterService.isSsrRoute(pathname)) {
                 return await this.renderSpa(url, res);
             }
-            return await this.renderSsr(url, res);
+            return await this.renderSsr(url, res, req);
         }
         catch (e) {
             if (this.vite) {
@@ -93,29 +93,60 @@ class SsrServer {
         const template = this.readTemplate(path.join(this.config.root, 'dist', 'index.html'));
         return res.status(200).set({ 'Content-Type': 'text/html' }).send(template);
     }
-    async renderSsr(url, res) {
+    async renderSsr(url, res, req) {
         const { template, render } = await this.getSsrRenderer();
         if (process.env.NODE_ENV !== 'production' && process.env.LOVABLE_SSR_DEBUG) {
             console.log('[lovable-ssr] render(url)', url);
         }
         let appHtml;
         let preloadedData;
+        // Constrói um contexto simples de request (cookies raw + headers) para o getData.
+        const cookiesRaw = req.headers.cookie ?? '';
+        const cookies = {};
+        if (cookiesRaw) {
+            cookiesRaw.split(';').forEach((part) => {
+                const [k, ...rest] = part.split('=');
+                if (!k)
+                    return;
+                const key = k.trim();
+                if (!key)
+                    return;
+                const value = rest.join('=').trim();
+                cookies[key] = decodeURIComponent(value);
+            });
+        }
+        const requestContext = {
+            cookiesRaw,
+            cookies,
+            headers: req.headers,
+            method: req.method,
+            url: req.originalUrl,
+        };
         if (this.isProd) {
             const cacheKey = this.normalizeCacheKey(url);
-            const cached = this._ssrCache.get(cacheKey);
-            if (cached) {
-                appHtml = cached.html;
-                preloadedData = cached.preloadedData;
+            const hasCookies = !!cookiesRaw;
+            // Evita cachear respostas personalizadas por cookies (ex.: auth).
+            if (!hasCookies) {
+                const cached = this._ssrCache.get(cacheKey);
+                if (cached) {
+                    appHtml = cached.html;
+                    preloadedData = cached.preloadedData;
+                }
+                else {
+                    const result = await render(url, { requestContext });
+                    appHtml = typeof result.html === 'string' ? result.html : '';
+                    preloadedData = result.preloadedData ?? {};
+                    this._ssrCache.set(cacheKey, { html: appHtml, preloadedData });
+                }
             }
             else {
-                const result = await render(url);
+                const result = await render(url, { requestContext });
                 appHtml = typeof result.html === 'string' ? result.html : '';
                 preloadedData = result.preloadedData ?? {};
-                this._ssrCache.set(cacheKey, { html: appHtml, preloadedData });
             }
         }
         else {
-            const result = await render(url);
+            const result = await render(url, { requestContext });
             appHtml = typeof result.html === 'string' ? result.html : '';
             preloadedData = result.preloadedData ?? {};
         }

@@ -5,7 +5,7 @@
 | Type | Description |
 |------|-------------|
 | `RouteConfig` | `{ path: string; Component: ComponentWithGetData; isSSR: boolean }` |
-| `ComponentWithGetData` | React component type with optional `getData?: (params?: { routeParams: Record<string, string>; searchParams: Record<string, string> }) => Promise<Record<string, unknown>>` |
+| `ComponentWithGetData` | React component type with optional `getData?: (params?: { routeParams: Record<string, string>; searchParams: Record<string, string>; request?: unknown }) => Promise<Record<string, unknown>>` |
 | `RouteDataState` | `Record<string, Record<string, unknown>>` (routeKey → data) |
 | `InitialRouteShape` | `{ path: string }` (minimal shape for initial route) |
 
@@ -45,7 +45,7 @@
 
 | Export | Description |
 |--------|-------------|
-| `render(url: string, options?: RenderOptions)` | Returns `Promise<{ html: string; preloadedData }>`. `options.wrap` can wrap the inner tree (e.g. QueryClient, Toaster). |
+| `render(url: string, options?: RenderOptions)` | Returns `Promise<{ html: string; preloadedData }>`. `options.wrap` can wrap the inner tree (e.g. QueryClient, Toaster). `options.requestContext` is forwarded to `getData` via `params.request`. |
 
 ## Server (lovable-ssr/server)
 
