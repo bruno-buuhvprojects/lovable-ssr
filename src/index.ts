@@ -1,5 +1,5 @@
 import './globals.js';
-export type { RouteConfig, ComponentWithGetData } from './types.js';
+export type { RouteConfig, ComponentWithGetData, RouteDataParams } from './types.js';
 export { registerRoutes, getRoutes } from './registry.js';
 export { BrowserRouteDataProvider } from './components/BrowserRouteDataProvider.js';
 export { default as RouterService } from './router/RouterService.js';
