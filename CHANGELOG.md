@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.15](https://github.com/bruno-buuhvprojects/lovable-ssr/compare/v0.1.14...v0.1.15) (2026-02-17)
+
+
+### Features
+
+* RouteDataParams ([7168506](https://github.com/bruno-buuhvprojects/lovable-ssr/commit/71685068feb7d503b19fe415777775e04032d0e5))
+
 ### [0.1.14](https://github.com/bruno-buuhvprojects/lovable-ssr/compare/v0.1.13...v0.1.14) (2026-02-17)
 
 
