@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { RouteDataParams } from '../types';
 export type RouteDataState = Record<string, Record<string, unknown>>;
 /**
  * Builds a stable cache key for route data. Includes path, route params and optionally search params
@@ -16,7 +17,7 @@ interface RouteDataProviderProps {
     children: ReactNode;
     initialData?: Record<string, unknown>;
     initialRoute?: InitialRouteShape;
-    initialParams?: Record<'routeParams' | 'searchParams', Record<string, string>>;
+    initialParams?: RouteDataParams;
 }
 export declare function RouteDataProvider({ children, initialData, initialRoute, initialParams, }: RouteDataProviderProps): import("react/jsx-runtime").JSX.Element;
 export declare function useRouteData(): RouteDataContextValue;

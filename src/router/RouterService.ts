@@ -1,5 +1,5 @@
 import { getRoutes } from '../registry.js';
-import type { RouteConfig } from '../types.js';
+import type { RouteConfig, RouteDataParams } from '../types.js';
 
 function matchPath(pathPattern: string, pathname: string): boolean {
   if (pathPattern === '*') return true;
@@ -23,10 +23,10 @@ function matchRoute(pathname: string): RouteConfig | undefined {
   return routes.find((r) => r.path === '*');
 }
 
-function routeParams(routePath: string, pathname?: string): Record<'routeParams' | 'searchParams', Record<string, string>> {
+function routeParams(routePath: string, pathname?: string): Omit<RouteDataParams, 'request'> {
   const pathSegments = pathname?.split('/').filter(Boolean) || [];
   const patternSegments = routePath.split('/').filter(Boolean);
-  const params: Record<'routeParams' | 'searchParams', Record<string, string>> = {
+  const params: Omit<RouteDataParams, 'request'> = {
     routeParams: {},
     searchParams: {},
   };

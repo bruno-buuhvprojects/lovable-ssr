@@ -4,7 +4,7 @@ import { StaticRouter } from 'react-router-dom/server';
 import { AppRoutes } from '../components/AppRoutes.js';
 import { RouteDataProvider } from '../router/RouteDataContext.js';
 import RouterService from '../router/RouterService.js';
-import { RequestContext } from '../types.js';
+import { RequestContext, RouteDataParams } from '../types.js';
 
 export interface RenderResult {
   html: string;
@@ -28,11 +28,7 @@ export async function render(url: string, options?: RenderOptions): Promise<Rend
   const fullUrl = new URL(url, 'http://localhost');
   const pathname = fullUrl.pathname || '/';
   const matchedRoute = RouterService.matchRoute(pathname);
-  const params: {
-    routeParams: Record<string, string>;
-    searchParams: Record<string, string>;
-    request?: RequestContext;
-  } = matchedRoute
+  const params: RouteDataParams = matchedRoute
     ? RouterService.routeParams(matchedRoute.path, pathname)
     : {
         routeParams: {},

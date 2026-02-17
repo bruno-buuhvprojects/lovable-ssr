@@ -9,17 +9,19 @@ Data is keyed by path + params, so revisiting the same URL reuses cached data.
 
 ## Parameters
 
-`getData` receives a single argument **`params`** with this shape:
+`getData` receives a single argument **`params`** com esta forma:
 
 ```ts
 {
-  routeParams: Record<string, string>;  // from the path (e.g. :id → routeParams.id)
+  routeParams: Record<string, string>;   // from the path (e.g. :id → routeParams.id)
   searchParams: Record<string, string>;  // from the URL query string (?q=... → searchParams.q)
+  request?: unknown;                     // optional request context (SSR only)
 }
 ```
 
 - **`routeParams`** — path segment values (e.g. route `/video/:id` with URL `/video/123` → `{ id: '123' }`).
 - **`searchParams`** — query string parsed as key/value (e.g. `?sort=date&page=1` → `{ sort: 'date', page: '1' }`).
+- **`request`** — contexto opcional da request preenchido pelo servidor SSR (cookies, headers, etc.). O framework **não** faz suposições sobre o conteúdo; a sua app decide o que ler (por exemplo, um cookie de JWT).
 
 ## Example
 
@@ -42,13 +44,27 @@ const VideoPage = ({ video, relatedVideos }: VideoPageProps) => {
 type GetDataParams = {
   routeParams: Record<string, string>;
   searchParams: Record<string, string>;
+  request?: {
+    cookies?: Record<string, string>;
+    headers?: Record<string, string | string[] | undefined>;
+    // any other fields your server decides to expose
+  };
 };
 
 async function getData(params?: GetDataParams) {
   const id = params?.routeParams?.id;
+
+  // Example: read an auth token from cookies on the server
+  const authToken = params?.request?.cookies?.auth_token;
+
+  const headers: Record<string, string> = {};
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
   const [videoRes, relatedRes] = await Promise.all([
-    fetch(`/api/videos/${id}`).then((r) => r.json()),
-    fetch(`/api/videos/${id}/related`).then((r) => r.json()),
+    fetch(`/api/videos/${id}`, { headers }).then((r) => r.json()),
+    fetch(`/api/videos/${id}/related`, { headers }).then((r) => r.json()),
   ]);
   return {
     video: videoRes,

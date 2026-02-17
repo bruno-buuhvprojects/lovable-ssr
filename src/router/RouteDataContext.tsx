@@ -6,6 +6,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
+import { RouteDataParams } from '../types';
 
 export type RouteDataState = Record<string, Record<string, unknown>>;
 
@@ -46,7 +47,7 @@ interface RouteDataProviderProps {
   children: ReactNode;
   initialData?: Record<string, unknown>;
   initialRoute?: InitialRouteShape;
-  initialParams?: Record<'routeParams' | 'searchParams', Record<string, string>>;
+  initialParams?: RouteDataParams;
 }
 
 export function RouteDataProvider({

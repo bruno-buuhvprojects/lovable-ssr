@@ -2,7 +2,7 @@ import { IncomingHttpHeaders } from 'node:http';
 import type React from 'react';
 
 export type ComponentWithGetData = React.ComponentType<any> & {
-  getData?: (params?: Record<'routeParams' | 'searchParams', Record<string, string>>) => Promise<Record<string, unknown>>;
+  getData?: (params?: RouteDataParams) => Promise<Record<string, unknown>>;
 };
 
 export type RouteConfig = {
@@ -16,4 +16,10 @@ export type RequestContext = {
   headers: IncomingHttpHeaders;
   method: string;
   url: string;
+};
+
+export type RouteDataParams = {
+  routeParams: Record<string, string>;
+  searchParams: Record<string, string>;
+  request?: RequestContext;
 };
