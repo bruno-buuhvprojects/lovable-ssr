@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
-import { StaticRouter } from 'react-router-dom/server';
+import { StaticRouter } from 'react-router-dom/server.js';
 import { SEOProvider } from '../components/SEOContext.js';
 import type { SEOProps } from '../components/SEOContext.js';
 import { buildHeadHtmlFromSEO } from './buildHeadHtml.js';

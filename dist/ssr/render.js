@@ -1,6 +1,6 @@
 import { jsx as _jsx } from "react/jsx-runtime";
 import { renderToString } from 'react-dom/server';
-import { StaticRouter } from 'react-router-dom/server';
+import { StaticRouter } from 'react-router-dom/server.js';
 import { SEOProvider } from '../components/SEOContext.js';
 import { buildHeadHtmlFromSEO } from './buildHeadHtml.js';
 import { AppRoutes } from '../components/AppRoutes.js';
