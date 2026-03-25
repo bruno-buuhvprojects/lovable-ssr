@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.22](https://github.com/bruno-buuhvprojects/lovable-ssr/compare/v0.1.21...v0.1.22) (2026-03-25)
+
+
+### Bug Fixes
+
+* import esm ([f4482cf](https://github.com/bruno-buuhvprojects/lovable-ssr/commit/f4482cff3f3f4be0b723d0a1a12d7d0cc345ecac))
+
 ### [0.1.21](https://github.com/bruno-buuhvprojects/lovable-ssr/compare/v0.1.20...v0.1.21) (2026-02-23)
 
 
