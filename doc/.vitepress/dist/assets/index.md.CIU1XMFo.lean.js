@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as e,ae as t}from"./chunks/framework.Dn7Y7LSn.js";const g=JSON.parse('{"title":"lovable-ssr","description":"","frontmatter":{},"headers":[],"relativePath":"index.md","filePath":"index.md"}'),n={name:"index.md"};function l(h,s,r,p,k,d){return a(),e("div",null,[...s[0]||(s[0]=[t("",10)])])}const E=i(n,[["render",l]]);export{g as __pageData,E as default};

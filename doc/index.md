@@ -15,6 +15,7 @@ SSR and route data engine for [Lovable](https://lovable.dev) projects.
 - [SSR](/guide/ssr) — entry-server and server setup
 - [getData](/guide/get-data) — loading data per route
 - [SEO](/guide/seo) — meta tags, Open Graph, JSON-LD
+- [Middleware](/guide/middleware) — run logic before loading a route (auth, etc.)
 - [API](/guide/api) — types, router, context, server config
 
 ## Minimal setup

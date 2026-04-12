@@ -6,6 +6,9 @@
 |------|-------------|
 | `RouteConfig` | `{ path: string; Component: ComponentWithGetData; isSSR: boolean; sitemap?: SitemapRouteConfig }` |
 | `ComponentWithGetData` | React component type with optional `getData?: (params?: { routeParams: Record<string, string>; searchParams: Record<string, string>; request?: unknown }) => Promise<Record<string, unknown>>` |
+| `MiddlewareFn` | `(ctx: MiddlewareContext) => Promise<MiddlewareResponse \| void> \| MiddlewareResponse \| void` |
+| `MiddlewareContext` | `{ request: RequestContext; route: RouteConfig \| undefined; pathname: string; params: { routeParams; searchParams } }` |
+| `MiddlewareResponse` | `{ redirect?: string; status?: number; headers?: Record<string, string>; body?: string }` |
 | `RouteDataState` | `Record<string, Record<string, unknown>>` (routeKey → data) |
 | `InitialRouteShape` | `{ path: string }` (minimal shape for initial route) |
 
@@ -15,6 +18,7 @@
 |----------|-------------|
 | `registerRoutes(routes: RouteConfig[])` | Set the route list (call once on client and in entry-server). |
 | `getRoutes(): RouteConfig[]` | Read the current route list (used internally). |
+| `registerMiddleware(fn: MiddlewareFn)` | Register a global middleware that runs before every route. Only one middleware can be registered. |
 
 ## Router (RouterService)
 
@@ -66,6 +70,7 @@ Import from `lovable-ssr/server` so Node/Express are not bundled in the client.
 | `port` | `number?` | Default port (default `5173`). |
 | `cssLinkInDev` | `string?` | HTML snippet to inject before `</head>` in dev (e.g. link to `/src/index.css`). |
 | `extraRoutes` | `(app: Express) => void` | Optional. Called before the SSR catch-all; use for custom routes. |
+| `middleware` | `MiddlewareFn?` | Optional. Runs before every route. If it returns a `MiddlewareResponse`, the route is not rendered. See [Middleware guide](/guide/middleware). |
 | `sitemap` | `{ siteUrl: string }` | Optional. Enables `/sitemap.xml` and `/robots.txt` built from routes with `sitemap.include`. |
 
 Production entry path is derived from `entryPath` by replacing `src/` with `dist/` and the extension with `.js` (e.g. `dist/ssr/entry-server.js`).

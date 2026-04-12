@@ -57,6 +57,12 @@ createServer({
   entryPath: 'src/ssr/entry-server.tsx',
   port: process.env.PORT ? Number(process.env.PORT) : 5173,
   cssLinkInDev: '<link rel="stylesheet" href="/src/index.css"></head>',
+  middleware: async (ctx) => {
+    // Example: protect /dashboard routes
+    if (ctx.pathname.startsWith('/dashboard') && !ctx.request.cookies.token) {
+      return { redirect: '/login' };
+    }
+  },
   extraRoutes: (app) => {
     // Register /sitemap.xml, /robots.txt, etc. before the SSR catch-all
     app.get('/robots.txt', (_req, res) => {
