@@ -1,6 +1,6 @@
 {
   "name": "lovable-ssr",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "description": "SSR and route data engine for Lovable projects",
   "license": "MIT",
   "keywords": [
