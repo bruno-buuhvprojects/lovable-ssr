@@ -1,6 +1,6 @@
 import './globals.js';
-export type { RouteConfig, ComponentWithGetData, RouteDataParams, SitemapEntry, SitemapRouteConfig, SitemapChangefreq, } from './types.js';
-export { registerRoutes, getRoutes } from './registry.js';
+export type { RouteConfig, ComponentWithGetData, RouteDataParams, SitemapEntry, SitemapRouteConfig, SitemapChangefreq, MiddlewareContext, MiddlewareFn, MiddlewareResponse, } from './types.js';
+export { registerRoutes, getRoutes, registerMiddleware } from './registry.js';
 export { BrowserRouteDataProvider } from './components/BrowserRouteDataProvider.js';
 export { SEO, type SEOProps } from './components/SEO.js';
 export { default as RouterService } from './router/RouterService.js';

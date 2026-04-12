@@ -1,4 +1,5 @@
 import { type Express } from 'express';
+import type { MiddlewareFn } from '../types.js';
 export interface RenderResult {
     html: string;
     preloadedData: Record<string, unknown>;
@@ -22,6 +23,8 @@ export interface CreateServerConfig {
     sitemap?: {
         siteUrl: string;
     };
+    /** Middleware executed before rendering each route. If it returns a response, the route is not rendered. */
+    middleware?: MiddlewareFn;
 }
 export declare function createServer(config: CreateServerConfig): Promise<{
     getApp: () => Express;

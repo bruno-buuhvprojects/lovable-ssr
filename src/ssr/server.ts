@@ -3,9 +3,9 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
-import { getRoutes } from '../registry.js';
+import { getMiddleware, getRoutes } from '../registry.js';
 import RouterService from '../router/RouterService.js';
-import type { RequestContext } from '../types.js';
+import type { MiddlewareContext, MiddlewareFn, MiddlewareResponse, RequestContext } from '../types.js';
 import type { SitemapEntry } from '../types.js';
 
 export interface RenderResult {
@@ -25,6 +25,8 @@ export interface CreateServerConfig {
   extraRoutes?: (app: Express) => void;
   /** Enable sitemap.xml and robots.txt from route registry. Routes with sitemap.include are included. */
   sitemap?: { siteUrl: string };
+  /** Middleware executed before rendering each route. If it returns a response, the route is not rendered. */
+  middleware?: MiddlewareFn;
 }
 
 function defaultDistEntryPath(entryPath: string): string {
@@ -33,8 +35,9 @@ function defaultDistEntryPath(entryPath: string): string {
     .replace(/\.tsx?$/, '.js');
 }
 
-type ResolvedServerConfig = Omit<Required<CreateServerConfig>, 'sitemap'> & {
+type ResolvedServerConfig = Omit<Required<CreateServerConfig>, 'sitemap' | 'middleware'> & {
   sitemap?: { siteUrl: string };
+  middleware: MiddlewareFn | null;
 };
 
 class SsrServer {
@@ -68,6 +71,7 @@ class SsrServer {
       cssLinkInDev:
         config.cssLinkInDev ?? '<link rel="stylesheet" href="/src/index.css"></head>',
       extraRoutes: config.extraRoutes ?? (() => {}),
+      middleware: config.middleware ?? null,
       sitemap: config.sitemap ?? undefined,
     };
     this.isProd = process.env.NODE_ENV === 'production';
@@ -185,15 +189,69 @@ ${lines.join('\n')}
       .replace(/'/g, '&apos;');
   }
 
+  private async runMiddleware(ctx: MiddlewareContext): Promise<MiddlewareResponse | void> {
+    const mw = this.config.middleware ?? getMiddleware();
+    if (!mw) return;
+    return await mw(ctx);
+  }
+
+  private sendMiddlewareResponse(res: Response, mwRes: MiddlewareResponse): void {
+    if (mwRes.headers) {
+      for (const [key, value] of Object.entries(mwRes.headers)) {
+        res.setHeader(key, value);
+      }
+    }
+    if (mwRes.redirect) {
+      res.redirect(mwRes.status ?? 302, mwRes.redirect);
+      return;
+    }
+    res.status(mwRes.status ?? 200).send(mwRes.body ?? '');
+  }
+
   private async handleRequest(req: Request, res: Response, next: NextFunction) {
     const url = req.originalUrl;
     const pathname = url.replace(/\?.*$/, '').replace(/#.*$/, '') || '/';
 
     try {
+      const matchedRoute = RouterService.matchRoute(pathname);
+      const params = matchedRoute
+        ? RouterService.routeParams(matchedRoute.path, pathname)
+        : { routeParams: {}, searchParams: {} };
+
+      const cookiesRaw = req.headers.cookie ?? '';
+      const cookies: Record<string, string> = {};
+      if (cookiesRaw) {
+        cookiesRaw.split(';').forEach((part) => {
+          const [k, ...rest] = part.split('=');
+          if (!k) return;
+          const key = k.trim();
+          if (!key) return;
+          const value = rest.join('=').trim();
+          cookies[key] = decodeURIComponent(value);
+        });
+      }
+      const requestContext: RequestContext = {
+        cookiesRaw,
+        cookies,
+        headers: req.headers,
+        method: req.method,
+        url: req.originalUrl,
+      };
+
+      const mwResult = await this.runMiddleware({
+        request: requestContext,
+        route: matchedRoute,
+        pathname,
+        params,
+      });
+      if (mwResult) {
+        return this.sendMiddlewareResponse(res, mwResult);
+      }
+
       if (!RouterService.isSsrRoute(pathname)) {
         return await this.renderSpa(url, res);
       }
-      return await this.renderSsr(url, res, req);
+      return await this.renderSsr(url, res, requestContext);
     } catch (e) {
       if (this.vite) {
         (this.vite as any).ssrFixStacktrace?.(e as Error);
@@ -213,7 +271,7 @@ ${lines.join('\n')}
     return res.status(200).set({ 'Content-Type': 'text/html' }).send(template);
   }
 
-  private async renderSsr(url: string, res: Response, req: Request) {
+  private async renderSsr(url: string, res: Response, requestContext: RequestContext) {
     const { template, render } = await this.getSsrRenderer();
     if (process.env.NODE_ENV !== 'production' && process.env.LOVABLE_SSR_DEBUG) {
       console.log('[lovable-ssr] render(url)', url);
@@ -223,26 +281,7 @@ ${lines.join('\n')}
     let preloadedData: Record<string, unknown>;
     let helmet: RenderResult['helmet'];
 
-    // Constrói um contexto simples de request (cookies raw + headers) para o getData.
-    const cookiesRaw = req.headers.cookie ?? '';
-    const cookies: Record<string, string> = {};
-    if (cookiesRaw) {
-      cookiesRaw.split(';').forEach((part) => {
-        const [k, ...rest] = part.split('=');
-        if (!k) return;
-        const key = k.trim();
-        if (!key) return;
-        const value = rest.join('=').trim();
-        cookies[key] = decodeURIComponent(value);
-      });
-    }
-    const requestContext: RequestContext = {
-      cookiesRaw,
-      cookies,
-      headers: req.headers,
-      method: req.method,
-      url: req.originalUrl,
-    };
+    const cookiesRaw = requestContext.cookiesRaw;
 
     if (this.isProd) {
       const cacheKey = this.normalizeCacheKey(url);

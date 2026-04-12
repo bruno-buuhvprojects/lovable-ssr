@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import { getRoutes } from '../registry.js';
+import { getMiddleware, getRoutes } from '../registry.js';
 import RouterService from '../router/RouterService.js';
 function defaultDistEntryPath(entryPath) {
     return entryPath
@@ -32,6 +32,7 @@ class SsrServer {
             port: config.port ?? 5173,
             cssLinkInDev: config.cssLinkInDev ?? '<link rel="stylesheet" href="/src/index.css"></head>',
             extraRoutes: config.extraRoutes ?? (() => { }),
+            middleware: config.middleware ?? null,
             sitemap: config.sitemap ?? undefined,
         };
         this.isProd = process.env.NODE_ENV === 'production';
@@ -136,14 +137,66 @@ ${lines.join('\n')}
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&apos;');
     }
+    async runMiddleware(ctx) {
+        const mw = this.config.middleware ?? getMiddleware();
+        if (!mw)
+            return;
+        return await mw(ctx);
+    }
+    sendMiddlewareResponse(res, mwRes) {
+        if (mwRes.headers) {
+            for (const [key, value] of Object.entries(mwRes.headers)) {
+                res.setHeader(key, value);
+            }
+        }
+        if (mwRes.redirect) {
+            res.redirect(mwRes.status ?? 302, mwRes.redirect);
+            return;
+        }
+        res.status(mwRes.status ?? 200).send(mwRes.body ?? '');
+    }
     async handleRequest(req, res, next) {
         const url = req.originalUrl;
         const pathname = url.replace(/\?.*$/, '').replace(/#.*$/, '') || '/';
         try {
+            const matchedRoute = RouterService.matchRoute(pathname);
+            const params = matchedRoute
+                ? RouterService.routeParams(matchedRoute.path, pathname)
+                : { routeParams: {}, searchParams: {} };
+            const cookiesRaw = req.headers.cookie ?? '';
+            const cookies = {};
+            if (cookiesRaw) {
+                cookiesRaw.split(';').forEach((part) => {
+                    const [k, ...rest] = part.split('=');
+                    if (!k)
+                        return;
+                    const key = k.trim();
+                    if (!key)
+                        return;
+                    const value = rest.join('=').trim();
+                    cookies[key] = decodeURIComponent(value);
+                });
+            }
+            const requestContext = {
+                cookiesRaw,
+                cookies,
+                headers: req.headers,
+                method: req.method,
+                url: req.originalUrl,
+            };
+            const mwResult = await this.runMiddleware({
+                request: requestContext,
+                route: matchedRoute,
+                pathname,
+                params,
+            });
+            if (mwResult) {
+                return this.sendMiddlewareResponse(res, mwResult);
+            }
             if (!RouterService.isSsrRoute(pathname)) {
                 return await this.renderSpa(url, res);
             }
-            return await this.renderSsr(url, res, req);
+            return await this.renderSsr(url, res, requestContext);
         }
         catch (e) {
             if (this.vite) {
@@ -162,7 +215,7 @@ ${lines.join('\n')}
         const template = this.readTemplate(path.join(this.config.root, 'dist', 'index.html'));
         return res.status(200).set({ 'Content-Type': 'text/html' }).send(template);
     }
-    async renderSsr(url, res, req) {
+    async renderSsr(url, res, requestContext) {
         const { template, render } = await this.getSsrRenderer();
         if (process.env.NODE_ENV !== 'production' && process.env.LOVABLE_SSR_DEBUG) {
             console.log('[lovable-ssr] render(url)', url);
@@ -170,28 +223,7 @@ ${lines.join('\n')}
         let appHtml;
         let preloadedData;
         let helmet;
-        // Constrói um contexto simples de request (cookies raw + headers) para o getData.
-        const cookiesRaw = req.headers.cookie ?? '';
-        const cookies = {};
-        if (cookiesRaw) {
-            cookiesRaw.split(';').forEach((part) => {
-                const [k, ...rest] = part.split('=');
-                if (!k)
-                    return;
-                const key = k.trim();
-                if (!key)
-                    return;
-                const value = rest.join('=').trim();
-                cookies[key] = decodeURIComponent(value);
-            });
-        }
-        const requestContext = {
-            cookiesRaw,
-            cookies,
-            headers: req.headers,
-            method: req.method,
-            url: req.originalUrl,
-        };
+        const cookiesRaw = requestContext.cookiesRaw;
         if (this.isProd) {
             const cacheKey = this.normalizeCacheKey(url);
             const hasCookies = !!cookiesRaw;

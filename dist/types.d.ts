@@ -37,4 +37,17 @@ export type RouteDataParams = {
     searchParams: Record<string, string>;
     request?: RequestContext;
 };
+export type MiddlewareContext = {
+    request: RequestContext;
+    route: RouteConfig | undefined;
+    pathname: string;
+    params: Omit<RouteDataParams, 'request'>;
+};
+export type MiddlewareResponse = {
+    redirect?: string;
+    status?: number;
+    headers?: Record<string, string>;
+    body?: string;
+};
+export type MiddlewareFn = (ctx: MiddlewareContext) => Promise<MiddlewareResponse | void> | MiddlewareResponse | void;
 //# sourceMappingURL=types.d.ts.map
