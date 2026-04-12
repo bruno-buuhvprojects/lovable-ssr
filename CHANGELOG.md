@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<<<<<<< HEAD
 ### [0.1.23](https://github.com/bruno-buuhvprojects/lovable-ssr/compare/v0.1.21...v0.1.23) (2026-04-12)
 
 
@@ -15,6 +16,14 @@ All notable changes to this project will be documented in this file. See [standa
 ### Features
 
 * **middleware:** adicionar suporte a middleware executado antes de carregar rotas ([937b443](https://github.com/bruno-buuhvprojects/lovable-ssr/commit/937b44382b58b88e2344c9f9620754172a3dcfad))
+=======
+### [0.1.22](https://github.com/bruno-buuhvprojects/lovable-ssr/compare/v0.1.21...v0.1.22) (2026-03-25)
+
+
+### Bug Fixes
+
+* import esm ([f4482cf](https://github.com/bruno-buuhvprojects/lovable-ssr/commit/f4482cff3f3f4be0b723d0a1a12d7d0cc345ecac))
+>>>>>>> 34b0ebfa1473eb17f1e683472e9eb8bc24e17dc3
 
 ### [0.1.21](https://github.com/bruno-buuhvprojects/lovable-ssr/compare/v0.1.20...v0.1.21) (2026-02-23)
 
