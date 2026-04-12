@@ -18,15 +18,6 @@ class SsrServer {
     config;
     isProd;
     _rendererCache;
-    /** On-demand SSR cache: key = pathname + normalized search params, value = render result. Only used in production. */
-    _ssrCache = new Map();
-    normalizeCacheKey(url) {
-        const u = new URL(url, 'http://localhost');
-        const search = new URLSearchParams(u.search);
-        const sorted = new URLSearchParams([...search.entries()].sort((a, b) => a[0].localeCompare(b[0])));
-        const q = sorted.toString();
-        return (u.pathname || '/') + (q ? `?${q}` : '');
-    }
     constructor(config) {
         this.config = {
             root: path.resolve(config.root),
@@ -189,29 +180,13 @@ ${lines.join('\n')}
         const template = this.readTemplate(path.join(this.config.root, 'dist', 'index.html'));
         return res.status(200).set({ 'Content-Type': 'text/html' }).send(template);
     }
-    normalizeRenderResult(result) {
+    async resolveRenderResult(url, render, requestContext) {
+        const result = await render(url, { requestContext });
         return {
             appHtml: typeof result.html === 'string' ? result.html : '',
             preloadedData: result.preloadedData ?? {},
             helmet: result.helmet,
         };
-    }
-    async resolveRenderResult(url, render, requestContext) {
-        if (!this.isProd) {
-            return this.normalizeRenderResult(await render(url, { requestContext }));
-        }
-        const hasCookies = !!requestContext.cookiesRaw;
-        if (hasCookies) {
-            return this.normalizeRenderResult(await render(url, { requestContext }));
-        }
-        const cacheKey = this.normalizeCacheKey(url);
-        const cached = this._ssrCache.get(cacheKey);
-        if (cached) {
-            return { appHtml: cached.html, preloadedData: cached.preloadedData, helmet: cached.helmet };
-        }
-        const normalized = this.normalizeRenderResult(await render(url, { requestContext }));
-        this._ssrCache.set(cacheKey, { html: normalized.appHtml, preloadedData: normalized.preloadedData, helmet: normalized.helmet });
-        return normalized;
     }
     async renderSsr(url, res, requestContext) {
         const { template, render } = await this.getSsrRenderer();

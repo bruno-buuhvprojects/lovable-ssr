@@ -50,19 +50,6 @@ class SsrServer {
     template: string;
     render: (url: string) => Promise<RenderResult>;
   };
-  /** On-demand SSR cache: key = pathname + normalized search params, value = render result. Only used in production. */
-  private _ssrCache = new Map<
-    string,
-    { html: string; preloadedData: Record<string, unknown>; helmet?: RenderResult['helmet'] }
-  >();
-
-  private normalizeCacheKey(url: string): string {
-    const u = new URL(url, 'http://localhost');
-    const search = new URLSearchParams(u.search);
-    const sorted = new URLSearchParams([...search.entries()].sort((a, b) => a[0].localeCompare(b[0])));
-    const q = sorted.toString();
-    return (u.pathname || '/') + (q ? `?${q}` : '');
-  }
 
   constructor(config: CreateServerConfig) {
     this.config = {
@@ -246,42 +233,17 @@ ${lines.join('\n')}
     return res.status(200).set({ 'Content-Type': 'text/html' }).send(template);
   }
 
-  private normalizeRenderResult(result: RenderResult): {
-    appHtml: string;
-    preloadedData: Record<string, unknown>;
-    helmet: RenderResult['helmet'];
-  } {
-    return {
-      appHtml: typeof result.html === 'string' ? result.html : '',
-      preloadedData: result.preloadedData ?? {},
-      helmet: result.helmet,
-    };
-  }
-
   private async resolveRenderResult(
     url: string,
     render: (url: string, options?: { requestContext?: unknown }) => Promise<RenderResult>,
     requestContext: RequestContext,
   ): Promise<{ appHtml: string; preloadedData: Record<string, unknown>; helmet: RenderResult['helmet'] }> {
-    if (!this.isProd) {
-      return this.normalizeRenderResult(await render(url, { requestContext }));
-    }
-
-    const hasCookies = !!requestContext.cookiesRaw;
-    
-    if (hasCookies) {
-      return this.normalizeRenderResult(await render(url, { requestContext }));
-    }
-    
-    const cacheKey = this.normalizeCacheKey(url);
-    const cached = this._ssrCache.get(cacheKey);
-    if (cached) {
-      return { appHtml: cached.html, preloadedData: cached.preloadedData, helmet: cached.helmet };
-    }
-
-    const normalized = this.normalizeRenderResult(await render(url, { requestContext }));
-    this._ssrCache.set(cacheKey, { html: normalized.appHtml, preloadedData: normalized.preloadedData, helmet: normalized.helmet });
-    return normalized;
+    const result = await render(url, { requestContext });
+    return {
+      appHtml: typeof result.html === 'string' ? result.html : '',
+      preloadedData: result.preloadedData ?? {},
+      helmet: result.helmet,
+    };
   }
 
   private async renderSsr(url: string, res: Response, requestContext: RequestContext) {
