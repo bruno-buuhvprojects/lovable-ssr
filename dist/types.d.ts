@@ -32,6 +32,12 @@ export type RequestContext = {
     method: string;
     url: string;
 };
+export declare function parseCookies(raw: string): Record<string, string>;
+export declare function buildRequestContext(req: {
+    headers: IncomingHttpHeaders;
+    method: string;
+    originalUrl: string;
+}): RequestContext;
 export type RouteDataParams = {
     routeParams: Record<string, string>;
     searchParams: Record<string, string>;

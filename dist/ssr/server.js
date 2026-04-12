@@ -5,6 +5,8 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import { getMiddleware, getRoutes } from '../registry.js';
 import RouterService from '../router/RouterService.js';
+import { buildRequestContext } from '../types.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 function defaultDistEntryPath(entryPath) {
     return entryPath
         .replace(/^src\//, 'dist/')
@@ -123,19 +125,11 @@ Sitemap: ${baseUrl}/sitemap.xml`);
         });
     }
     buildSitemapXml(entries) {
-        const lines = entries.map((e) => `  <url><loc>${this.escapeXml(e.loc)}</loc><lastmod>${e.lastmod ?? ''}</lastmod><changefreq>${e.changefreq ?? 'weekly'}</changefreq><priority>${e.priority ?? 0.5}</priority></url>`);
+        const lines = entries.map((e) => `  <url><loc>${escapeHtml(e.loc)}</loc><lastmod>${e.lastmod ?? ''}</lastmod><changefreq>${e.changefreq ?? 'weekly'}</changefreq><priority>${e.priority ?? 0.5}</priority></url>`);
         return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${lines.join('\n')}
 </urlset>`;
-    }
-    escapeXml(str) {
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&apos;');
     }
     async runMiddleware(ctx) {
         const mw = this.config.middleware ?? getMiddleware();
@@ -163,27 +157,7 @@ ${lines.join('\n')}
             const params = matchedRoute
                 ? RouterService.routeParams(matchedRoute.path, pathname)
                 : { routeParams: {}, searchParams: {} };
-            const cookiesRaw = req.headers.cookie ?? '';
-            const cookies = {};
-            if (cookiesRaw) {
-                cookiesRaw.split(';').forEach((part) => {
-                    const [k, ...rest] = part.split('=');
-                    if (!k)
-                        return;
-                    const key = k.trim();
-                    if (!key)
-                        return;
-                    const value = rest.join('=').trim();
-                    cookies[key] = decodeURIComponent(value);
-                });
-            }
-            const requestContext = {
-                cookiesRaw,
-                cookies,
-                headers: req.headers,
-                method: req.method,
-                url: req.originalUrl,
-            };
+            const requestContext = buildRequestContext(req);
             const mwResult = await this.runMiddleware({
                 request: requestContext,
                 route: matchedRoute,
@@ -215,47 +189,36 @@ ${lines.join('\n')}
         const template = this.readTemplate(path.join(this.config.root, 'dist', 'index.html'));
         return res.status(200).set({ 'Content-Type': 'text/html' }).send(template);
     }
+    normalizeRenderResult(result) {
+        return {
+            appHtml: typeof result.html === 'string' ? result.html : '',
+            preloadedData: result.preloadedData ?? {},
+            helmet: result.helmet,
+        };
+    }
+    async resolveRenderResult(url, render, requestContext) {
+        if (!this.isProd) {
+            return this.normalizeRenderResult(await render(url, { requestContext }));
+        }
+        const hasCookies = !!requestContext.cookiesRaw;
+        if (hasCookies) {
+            return this.normalizeRenderResult(await render(url, { requestContext }));
+        }
+        const cacheKey = this.normalizeCacheKey(url);
+        const cached = this._ssrCache.get(cacheKey);
+        if (cached) {
+            return { appHtml: cached.html, preloadedData: cached.preloadedData, helmet: cached.helmet };
+        }
+        const normalized = this.normalizeRenderResult(await render(url, { requestContext }));
+        this._ssrCache.set(cacheKey, { html: normalized.appHtml, preloadedData: normalized.preloadedData, helmet: normalized.helmet });
+        return normalized;
+    }
     async renderSsr(url, res, requestContext) {
         const { template, render } = await this.getSsrRenderer();
         if (process.env.NODE_ENV !== 'production' && process.env.LOVABLE_SSR_DEBUG) {
             console.log('[lovable-ssr] render(url)', url);
         }
-        let appHtml;
-        let preloadedData;
-        let helmet;
-        const cookiesRaw = requestContext.cookiesRaw;
-        if (this.isProd) {
-            const cacheKey = this.normalizeCacheKey(url);
-            const hasCookies = !!cookiesRaw;
-            // Evita cachear respostas personalizadas por cookies (ex.: auth).
-            if (!hasCookies) {
-                const cached = this._ssrCache.get(cacheKey);
-                if (cached) {
-                    appHtml = cached.html;
-                    preloadedData = cached.preloadedData;
-                    helmet = cached.helmet;
-                }
-                else {
-                    const result = await render(url, { requestContext });
-                    appHtml = typeof result.html === 'string' ? result.html : '';
-                    preloadedData = result.preloadedData ?? {};
-                    helmet = result.helmet;
-                    this._ssrCache.set(cacheKey, { html: appHtml, preloadedData, helmet });
-                }
-            }
-            else {
-                const result = await render(url, { requestContext });
-                appHtml = typeof result.html === 'string' ? result.html : '';
-                preloadedData = result.preloadedData ?? {};
-                helmet = result.helmet;
-            }
-        }
-        else {
-            const result = await render(url, { requestContext });
-            appHtml = typeof result.html === 'string' ? result.html : '';
-            preloadedData = result.preloadedData ?? {};
-            helmet = result.helmet;
-        }
+        const { appHtml, preloadedData, helmet } = await this.resolveRenderResult(url, render, requestContext);
         let html = template.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`);
         html = this.injectHelmet(html, helmet);
         html = this.injectPreloadedData(html, preloadedData);

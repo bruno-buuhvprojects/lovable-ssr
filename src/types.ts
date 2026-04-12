@@ -43,6 +43,34 @@ export type RequestContext = {
   url: string;
 };
 
+export function parseCookies(raw: string): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  if (!raw) return cookies;
+  raw.split(';').forEach((part) => {
+    const [k, ...rest] = part.split('=');
+    if (!k) return;
+    const key = k.trim();
+    if (!key) return;
+    cookies[key] = decodeURIComponent(rest.join('=').trim());
+  });
+  return cookies;
+}
+
+export function buildRequestContext(req: {
+  headers: IncomingHttpHeaders;
+  method: string;
+  originalUrl: string;
+}): RequestContext {
+  const cookiesRaw = (req.headers.cookie as string) ?? '';
+  return {
+    cookiesRaw,
+    cookies: parseCookies(cookiesRaw),
+    headers: req.headers,
+    method: req.method,
+    url: req.originalUrl,
+  };
+}
+
 export type RouteDataParams = {
   routeParams: Record<string, string>;
   searchParams: Record<string, string>;

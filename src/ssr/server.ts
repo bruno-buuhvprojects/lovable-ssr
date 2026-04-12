@@ -5,8 +5,9 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
 import { getMiddleware, getRoutes } from '../registry.js';
 import RouterService from '../router/RouterService.js';
-import type { MiddlewareContext, MiddlewareFn, MiddlewareResponse, RequestContext } from '../types.js';
-import type { SitemapEntry } from '../types.js';
+import { buildRequestContext } from '../types.js';
+import type { MiddlewareContext, MiddlewareFn, MiddlewareResponse, RequestContext, SitemapEntry } from '../types.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 export interface RenderResult {
   html: string;
@@ -172,7 +173,7 @@ Sitemap: ${baseUrl}/sitemap.xml`);
   private buildSitemapXml(entries: SitemapEntry[]): string {
     const lines = entries.map(
       (e) =>
-        `  <url><loc>${this.escapeXml(e.loc)}</loc><lastmod>${e.lastmod ?? ''}</lastmod><changefreq>${e.changefreq ?? 'weekly'}</changefreq><priority>${e.priority ?? 0.5}</priority></url>`
+        `  <url><loc>${escapeHtml(e.loc)}</loc><lastmod>${e.lastmod ?? ''}</lastmod><changefreq>${e.changefreq ?? 'weekly'}</changefreq><priority>${e.priority ?? 0.5}</priority></url>`
     );
     return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -180,14 +181,6 @@ ${lines.join('\n')}
 </urlset>`;
   }
 
-  private escapeXml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
-  }
 
   private async runMiddleware(ctx: MiddlewareContext): Promise<MiddlewareResponse | void> {
     const mw = this.config.middleware ?? getMiddleware();
@@ -218,25 +211,7 @@ ${lines.join('\n')}
         ? RouterService.routeParams(matchedRoute.path, pathname)
         : { routeParams: {}, searchParams: {} };
 
-      const cookiesRaw = req.headers.cookie ?? '';
-      const cookies: Record<string, string> = {};
-      if (cookiesRaw) {
-        cookiesRaw.split(';').forEach((part) => {
-          const [k, ...rest] = part.split('=');
-          if (!k) return;
-          const key = k.trim();
-          if (!key) return;
-          const value = rest.join('=').trim();
-          cookies[key] = decodeURIComponent(value);
-        });
-      }
-      const requestContext: RequestContext = {
-        cookiesRaw,
-        cookies,
-        headers: req.headers,
-        method: req.method,
-        url: req.originalUrl,
-      };
+      const requestContext = buildRequestContext(req);
 
       const mwResult = await this.runMiddleware({
         request: requestContext,
@@ -271,48 +246,51 @@ ${lines.join('\n')}
     return res.status(200).set({ 'Content-Type': 'text/html' }).send(template);
   }
 
+  private normalizeRenderResult(result: RenderResult): {
+    appHtml: string;
+    preloadedData: Record<string, unknown>;
+    helmet: RenderResult['helmet'];
+  } {
+    return {
+      appHtml: typeof result.html === 'string' ? result.html : '',
+      preloadedData: result.preloadedData ?? {},
+      helmet: result.helmet,
+    };
+  }
+
+  private async resolveRenderResult(
+    url: string,
+    render: (url: string, options?: { requestContext?: unknown }) => Promise<RenderResult>,
+    requestContext: RequestContext,
+  ): Promise<{ appHtml: string; preloadedData: Record<string, unknown>; helmet: RenderResult['helmet'] }> {
+    if (!this.isProd) {
+      return this.normalizeRenderResult(await render(url, { requestContext }));
+    }
+
+    const hasCookies = !!requestContext.cookiesRaw;
+    
+    if (hasCookies) {
+      return this.normalizeRenderResult(await render(url, { requestContext }));
+    }
+    
+    const cacheKey = this.normalizeCacheKey(url);
+    const cached = this._ssrCache.get(cacheKey);
+    if (cached) {
+      return { appHtml: cached.html, preloadedData: cached.preloadedData, helmet: cached.helmet };
+    }
+
+    const normalized = this.normalizeRenderResult(await render(url, { requestContext }));
+    this._ssrCache.set(cacheKey, { html: normalized.appHtml, preloadedData: normalized.preloadedData, helmet: normalized.helmet });
+    return normalized;
+  }
+
   private async renderSsr(url: string, res: Response, requestContext: RequestContext) {
     const { template, render } = await this.getSsrRenderer();
     if (process.env.NODE_ENV !== 'production' && process.env.LOVABLE_SSR_DEBUG) {
       console.log('[lovable-ssr] render(url)', url);
     }
 
-    let appHtml: string;
-    let preloadedData: Record<string, unknown>;
-    let helmet: RenderResult['helmet'];
-
-    const cookiesRaw = requestContext.cookiesRaw;
-
-    if (this.isProd) {
-      const cacheKey = this.normalizeCacheKey(url);
-      const hasCookies = !!cookiesRaw;
-
-      // Evita cachear respostas personalizadas por cookies (ex.: auth).
-      if (!hasCookies) {
-        const cached = this._ssrCache.get(cacheKey);
-        if (cached) {
-          appHtml = cached.html;
-          preloadedData = cached.preloadedData;
-          helmet = cached.helmet;
-        } else {
-          const result = await render(url, { requestContext });
-          appHtml = typeof result.html === 'string' ? result.html : '';
-          preloadedData = result.preloadedData ?? {};
-          helmet = result.helmet;
-          this._ssrCache.set(cacheKey, { html: appHtml, preloadedData, helmet });
-        }
-      } else {
-        const result = await render(url, { requestContext });
-        appHtml = typeof result.html === 'string' ? result.html : '';
-        preloadedData = result.preloadedData ?? {};
-        helmet = result.helmet;
-      }
-    } else {
-      const result = await render(url, { requestContext });
-      appHtml = typeof result.html === 'string' ? result.html : '';
-      preloadedData = result.preloadedData ?? {};
-      helmet = result.helmet;
-    }
+    const { appHtml, preloadedData, helmet } = await this.resolveRenderResult(url, render, requestContext);
 
     let html = template.replace(
       '<div id="root"></div>',
